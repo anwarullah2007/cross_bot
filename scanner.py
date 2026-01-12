@@ -1,39 +1,15 @@
-from data import fetch_data
-from indicators import detect_pump
-from config import PAIRS, TIMEFRAME, PRICE_PUMP_PERCENT, VOLUME_MULTIPLIER
-from state import load_state, save_state
+import requests
 
-def scan_and_alert(bot, chat_id):
-    state = load_state()
-    alerts = state.get("alerts", {})
+COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price"
 
-    for pair in PAIRS:
-        try:
-            df = fetch_data(pair, TIMEFRAME)
-            pump = detect_pump(df, PRICE_PUMP_PERCENT, VOLUME_MULTIPLIER)
-        except Exception as e:
-            print(f"[ERROR] {pair}: {e}")
-            continue
+def fetch_market_data(coins, api_key):
+    params = {
+        "ids": ",".join(coins),
+        "vs_currencies": "usd",
+        "include_24hr_change": "true",
+        "x_cg_demo_api_key": api_key
+    }
 
-        if not pump:
-            continue
-
-        # Avoid spam (one alert per candle)
-        last_time = str(df.iloc[-1]["time"])
-        if alerts.get(pair) == last_time:
-            continue
-
-        alerts[pair] = last_time
-        state["alerts"] = alerts
-        save_state(state)
-
-        message = (
-            f"🚀 *PUMP ALERT*\n\n"
-            f"📊 Coin: *{pair}*\n"
-            f"📈 Price Change: *{pump['price_change']}%*\n"
-            f"🔊 Volume: *{pump['volume']}*\n"
-            f"📊 Avg Volume: *{pump['avg_volume']}*\n"
-            f"⏱ Timeframe: {TIMEFRAME}"
-        )
-
-        bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+    response = requests.get(COINGECKO_URL, params=params, timeout=10)
+    response.raise_for_status()
+    return response.json()
