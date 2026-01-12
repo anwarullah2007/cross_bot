@@ -1,37 +1,36 @@
-import asyncio
-from telegram.ext import ApplicationBuilder, CommandHandler
+import time
+from telegram.ext import Updater, CommandHandler
 from config import BOT_TOKEN, SCAN_INTERVAL
 from scanner import scan_and_alert
+from state import load_state, save_state
 
-CHAT_ID = None
+def start(update, context):
+    state = load_state()
+    state["chat_id"] = update.message.chat_id
+    save_state(state)
+    update.message.reply_text("🚀 Crypto Pump Bot Activated")
 
-async def start(update, context):
-    global CHAT_ID
-    CHAT_ID = update.effective_chat.id
-    await update.message.reply_text("✅ Cross Bot Activated")
-
-async def background_scanner(app):
-    while True:
-        if CHAT_ID:
-            await scan_and_alert(app.bot, CHAT_ID)
-        await asyncio.sleep(SCAN_INTERVAL)
-
-async def post_init(app):
-    # Start background task once bot is fully initialized
-    asyncio.create_task(background_scanner(app))
+def status(update, context):
+    update.message.reply_text("🟢 Pump bot is running")
 
 def main():
-    app = (
-        ApplicationBuilder()
-        .token(BOT_TOKEN)
-        .post_init(post_init)
-        .build()
-    )
+    updater = Updater(BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
 
-    app.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("status", status))
 
-    # PTB owns the event loop
-    app.run_polling()
+    updater.start_polling()
+    print("Pump bot started...")
+
+    while True:
+        state = load_state()
+        chat_id = state.get("chat_id")
+
+        if chat_id:
+            scan_and_alert(updater.bot, chat_id)
+
+        time.sleep(SCAN_INTERVAL)
 
 if __name__ == "__main__":
     main()
