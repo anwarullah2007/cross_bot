@@ -8,7 +8,8 @@ PAIRS = ["BTCUSDT", "ETHUSDT"]
 TIMEFRAME = "15m"
 
 # Pump conditions
-PRICE_PUMP_PERCENT = 3.0      # 3% price jump
-VOLUME_MULTIPLIER = 2.0       # 2x volume
+PRICE_PUMP_PERCENT = 1.0
+VOLUME_MULTIPLIER = 1.2
+SCAN_INTERVAL = 60
+      
 
-SCAN_INTERVAL = 60 * 5        # 5 minutes
