@@ -1,7 +1,8 @@
-import time
 import threading
-from telegram import Update, Bot
-from telegram.ext import Updater, CommandHandler, CallbackContext
+import time
+from flask import Flask, request
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler
 
 from config import (
     BOT_TOKEN,
@@ -14,9 +15,11 @@ from scanner import fetch_market_data
 from state import load_state, save_state
 
 bot = Bot(token=BOT_TOKEN)
+app = Flask(__name__)
+dispatcher = Dispatcher(bot, None, workers=1, use_context=True)
 
-# ---------------- USER COMMAND ----------------
-def start(update: Update, context: CallbackContext):
+# ---------- COMMAND ----------
+def start(update, context):
     chat_id = str(update.effective_chat.id)
 
     state = load_state()
@@ -27,27 +30,21 @@ def start(update: Update, context: CallbackContext):
         state["users"] = users
         save_state(state)
 
-    update.message.reply_text(
-        "✅ Subscribed!\n"
-        "You will now receive pump alerts 🚀"
+    bot.send_message(
+        chat_id=chat_id,
+        text="✅ Subscribed!\nYou will receive pump alerts 🚀"
     )
 
-# ---------------- ALERT SENDER ----------------
-def send_alert(users, coin, price, change):
-    message = (
-        f"🚨 PUMP ALERT 🚨\n\n"
-        f"Coin: {coin.upper()}\n"
-        f"Price: ${price:.2f}\n"
-        f"24h Change: +{change:.2f}%"
-    )
+dispatcher.add_handler(CommandHandler("start", start))
 
-    for chat_id in users:
-        try:
-            bot.send_message(chat_id=chat_id, text=message)
-        except Exception as e:
-            print(f"⚠️ Send failed {chat_id}: {e}")
+# ---------- WEBHOOK ----------
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return "ok"
 
-# ---------------- SCANNER LOOP ----------------
+# ---------- SCANNER ----------
 def scan_loop():
     print("🚀 CoinGecko Alert Scanner Started")
 
@@ -63,10 +60,17 @@ def scan_loop():
                 change = info.get("usd_24h_change", 0)
                 price = info.get("usd", 0)
 
-                already_alerted = alerted.get(coin, False)
-
-                if change >= ALERT_PERCENT and not already_alerted:
-                    send_alert(users, coin, price, change)
+                if change >= ALERT_PERCENT and not alerted.get(coin):
+                    for user in users:
+                        bot.send_message(
+                            chat_id=user,
+                            text=(
+                                f"🚨 PUMP ALERT 🚨\n\n"
+                                f"Coin: {coin.upper()}\n"
+                                f"Price: ${price:.2f}\n"
+                                f"24h Change: +{change:.2f}%"
+                            )
+                        )
                     alerted[coin] = True
 
                 if change < ALERT_PERCENT:
@@ -80,18 +84,7 @@ def scan_loop():
 
         time.sleep(SCAN_INTERVAL)
 
-# ---------------- MAIN ----------------
-def main():
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-
-    # Start scanner in background thread
-    threading.Thread(target=scan_loop, daemon=True).start()
-
-    updater.start_polling()
-    updater.idle()
-
+# ---------- MAIN ----------
 if __name__ == "__main__":
-    main()
+    threading.Thread(target=scan_loop, daemon=True).start()
+    app.run(host="0.0.0.0", port=8080)
