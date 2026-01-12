@@ -2,11 +2,13 @@ import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-if not BOT_TOKEN:
-    raise RuntimeError("BOT_TOKEN is not set")
+# 🔥 ONLY TWO COINS FOR TESTING
+PAIRS = ["BTCUSDT", "ETHUSDT"]
 
-PAIRS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
-TIMEFRAME = "1d"        # 1d recommended for crosses
-SHORT_MA = 50
-LONG_MA = 200
-SCAN_INTERVAL = 60 * 30  # 30 minutes
+TIMEFRAME = "15m"
+
+# Pump conditions
+PRICE_PUMP_PERCENT = 3.0      # 3% price jump
+VOLUME_MULTIPLIER = 2.0       # 2x volume
+
+SCAN_INTERVAL = 60 * 5        # 5 minutes
