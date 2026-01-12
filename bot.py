@@ -1,4 +1,5 @@
 import time
+import threading
 from telegram import Update, Bot
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
@@ -14,7 +15,7 @@ from state import load_state, save_state
 
 bot = Bot(token=BOT_TOKEN)
 
-# ---- USER COMMAND ----
+# ---------------- USER COMMAND ----------------
 def start(update: Update, context: CallbackContext):
     chat_id = str(update.effective_chat.id)
 
@@ -27,11 +28,11 @@ def start(update: Update, context: CallbackContext):
         save_state(state)
 
     update.message.reply_text(
-        "✅ You are subscribed!\n"
-        "You will receive pump alerts automatically 🚀"
+        "✅ Subscribed!\n"
+        "You will now receive pump alerts 🚀"
     )
 
-# ---- ALERT FUNCTION ----
+# ---------------- ALERT SENDER ----------------
 def send_alert(users, coin, price, change):
     message = (
         f"🚨 PUMP ALERT 🚨\n\n"
@@ -44,19 +45,19 @@ def send_alert(users, coin, price, change):
         try:
             bot.send_message(chat_id=chat_id, text=message)
         except Exception as e:
-            print(f"⚠️ Failed to send to {chat_id}: {e}")
+            print(f"⚠️ Send failed {chat_id}: {e}")
 
-# ---- BACKGROUND SCANNER ----
+# ---------------- SCANNER LOOP ----------------
 def scan_loop():
-    print("🚀 CoinGecko Personal Alert Bot Started")
-
-    state = load_state()
-    alerted = state.get("alerted", {})
+    print("🚀 CoinGecko Alert Scanner Started")
 
     while True:
         try:
-            data = fetch_market_data(COINS, COINGECKO_API_KEY)
+            state = load_state()
             users = state.get("users", [])
+            alerted = state.get("alerted", {})
+
+            data = fetch_market_data(COINS, COINGECKO_API_KEY)
 
             for coin, info in data.items():
                 change = info.get("usd_24h_change", 0)
@@ -79,16 +80,18 @@ def scan_loop():
 
         time.sleep(SCAN_INTERVAL)
 
-# ---- MAIN ----
+# ---------------- MAIN ----------------
 def main():
     updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
 
-    updater.start_polling()
+    # Start scanner in background thread
+    threading.Thread(target=scan_loop, daemon=True).start()
 
-    scan_loop()
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
