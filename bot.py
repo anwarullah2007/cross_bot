@@ -20,7 +20,7 @@ def send_alert(coin, price, change):
         f"Price: ${price:.2f}\n"
         f"24h Change: +{change:.2f}%"
     )
-    bot.send_message(chat_id=CHAT_ID, text=message)
+    bot.send_message(chat_id=@Alariicbot, text=message)
 
 def main():
     print("🚀 CoinGecko Pump Alert Bot Started")
@@ -53,3 +53,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
