@@ -16,10 +16,11 @@ if not COINGECKO_API_KEY:
 COINS = ["bitcoin", "ethereum"]
 
 # Alert threshold
-ALERT_PERCENT = 1.0  # 1%
+ALERT_PERCENT = 0.2  # 1%
 
 # Scan interval (seconds)
-SCAN_INTERVAL = 60
+SCAN_INTERVAL = 30
 
 # Telegram chat
 CHAT_ID = 123456789  # <-- REPLACE WITH YOUR CHAT ID
+
