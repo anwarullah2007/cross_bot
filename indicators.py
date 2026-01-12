@@ -1,21 +1,18 @@
-def detect_cross(df, short_ma=50, long_ma=200):
-    # Calculate moving averages manually (no pandas_ta)
-    df["short_ma"] = df["close"].rolling(window=short_ma).mean()
-    df["long_ma"] = df["close"].rolling(window=long_ma).mean()
-
-    # Need at least 2 candles with MA values
-    if len(df) < long_ma + 2:
+def detect_pump(df, price_percent, volume_multiplier):
+    if len(df) < 20:
         return None
 
+    last = df.iloc[-1]
     prev = df.iloc[-2]
-    curr = df.iloc[-1]
 
-    # Golden Cross
-    if prev.short_ma < prev.long_ma and curr.short_ma > curr.long_ma:
-        return "GOLDEN"
+    price_change = ((last.close - prev.close) / prev.close) * 100
+    avg_volume = df["volume"].iloc[-20:-1].mean()
 
-    # Death Cross
-    if prev.short_ma > prev.long_ma and curr.short_ma < curr.long_ma:
-        return "DEATH"
+    if price_change >= price_percent and last.volume >= avg_volume * volume_multiplier:
+        return {
+            "price_change": round(price_change, 2),
+            "volume": round(last.volume, 2),
+            "avg_volume": round(avg_volume, 2)
+        }
 
     return None
