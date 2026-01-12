@@ -1,7 +1,7 @@
 import os
 import sys
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEn")
 COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
 
 if not BOT_TOKEN:
@@ -23,4 +23,5 @@ SCAN_INTERVAL = 30
 
 # Telegram chat
 CHAT_ID = 123456789  # <-- REPLACE WITH YOUR CHAT ID
+
 
