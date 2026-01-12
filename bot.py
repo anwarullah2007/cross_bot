@@ -1,34 +1,53 @@
 import time
-from telegram.ext import Updater, CommandHandler
-from config import BOT_TOKEN, SCAN_INTERVAL
-from scanner import scan_and_alert
+from telegram import Bot
+from config import (
+    BOT_TOKEN,
+    COINGECKO_API_KEY,
+    COINS,
+    ALERT_PERCENT,
+    SCAN_INTERVAL,
+    CHAT_ID
+)
+from scanner import fetch_market_data
 from state import load_state, save_state
 
-def start(update, context):
-    state = load_state()
-    state["chat_id"] = update.message.chat_id
-    save_state(state)
-    update.message.reply_text("🚀 Crypto Pump Bot Activated")
+bot = Bot(token=BOT_TOKEN)
 
-def status(update, context):
-    update.message.reply_text("🟢 Pump bot is running")
+def send_alert(coin, price, change):
+    message = (
+        f"🚨 PUMP ALERT 🚨\n\n"
+        f"Coin: {coin.upper()}\n"
+        f"Price: ${price:.2f}\n"
+        f"24h Change: +{change:.2f}%"
+    )
+    bot.send_message(chat_id=CHAT_ID, text=message)
 
 def main():
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
+    print("🚀 CoinGecko Pump Alert Bot Started")
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("status", status))
-
-    updater.start_polling()
-    print("Pump bot started...")
+    state = load_state()
 
     while True:
-        state = load_state()
-        chat_id = state.get("chat_id")
+        try:
+            data = fetch_market_data(COINS, COINGECKO_API_KEY)
 
-        if chat_id:
-            scan_and_alert(updater.bot, chat_id)
+            for coin, info in data.items():
+                change = info.get("usd_24h_change", 0)
+                price = info.get("usd", 0)
+
+                last_alerted = state.get(coin, False)
+
+                if change >= ALERT_PERCENT and not last_alerted:
+                    send_alert(coin, price, change)
+                    state[coin] = True
+
+                if change < ALERT_PERCENT:
+                    state[coin] = False
+
+            save_state(state)
+
+        except Exception as e:
+            print("⚠️ Error:", e)
 
         time.sleep(SCAN_INTERVAL)
 
